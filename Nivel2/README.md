@@ -15,7 +15,7 @@ En la solución de este nivel se modificaron los archivos app.py y requirements,
 	    │   │   └── worklog.py
 	    │   ├── Dockerfile
 	    │   └── schema.sql
-	└── docker-compose.yml
+	    └── docker-compose.yml
 ## app.py
 Este programa fue modificado ya que en este nivel se interactua con base de datos almacenando y consultando registros, para este ejemplo se esta utilizando MySQL como gestor de base de datos. Primeramente se agregó la libreria flask_mysqldb y una clase hecha en python llamada worklog que se encuentra en el archivo worklog.py, esta clase se conecta al servidor MySQL.
 
