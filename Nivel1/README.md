@@ -7,10 +7,10 @@ En este documento se explicará como se resolvió el ejercicio, archivos que se 
 
     └── nica-ventas
 		    └── disponibilidad
-					├── app
-					│   ├── app.py
-					│   └── requirements.txt
-					└── Dockerfile
+				├── app
+				│   ├── app.py
+				│   └── requirements.txt
+				└── Dockerfile
 El directorio nica-ventas es el directorio principal dentro del cual están almacenados los microservicios, dentro de nica-ventas creamos el directorio disponibilidad porque se le da solución al **servicio de consulta de disponibilidad de ventas** y dentro de disponibilidad creamos el directorio app y el fichero Dockerfile.
 ## Dockerfile
 Es un archivo de texto plano que contiene las instrucciones necesarias para automatizar la creación de una imagen que será utilizada posteriormente para la ejecución de instancias (docker), el contenido del archivo Dockerfile es el siguiente:
