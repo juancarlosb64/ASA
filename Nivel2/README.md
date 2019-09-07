@@ -12,10 +12,10 @@ En la solución de este nivel se modificaron los archivos app.py y requirements,
 		├── app
 		│   ├── app.py
 		│   ├── requirements.txt
-	    │   └── worklog.py
+		│   └── worklog.py
 		├── Dockerfile
 		└── schema.sql
-	└── docker-compose.yml
+		│└── docker-compose.yml
 
 
 El directorio nica-ventas es el directorio principal dentro del cual están almacenados los microservicios, dentro de nica-ventas creamos el directorio disponibilidad porque se le da solución al **servicio de consulta de disponibilidad de ventas** y dentro de disponibilidad creamos el directorio app y el fichero Dockerfile.
