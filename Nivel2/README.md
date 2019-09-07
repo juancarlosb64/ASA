@@ -15,7 +15,7 @@ En la solución de este nivel se modificaron los archivos app.py y requirements,
 	    │   │   └── worklog.py
 	    │   ├── Dockerfile
 	    │   └── schema.sql
-		└── docker-compose.yml
+	└── docker-compose.yml
 ## app.py
 Este programa fue modificado ya que en este nivel se interactua con base de datos almacenando y consultando registros, para este ejemplo se esta utilizando MySQL como gestor de base de datos. Primeramente se agregó la libreria flask_mysqldb y una clase hecha en python llamada worklog que se encuentra en el archivo worklog.py, esta clase se conecta al servidor MySQL.
 
@@ -31,7 +31,54 @@ En la configuración de la variable flask se agregaron las credenciales para con
     app.config['MYSQL_DB'] = os.environ['DATABASE_NAME']
     
     mysql = MySQL(app)
-Se modificó la función get_active, acá lo que hacemos es obtener las variables country y city con request.args.get() las cuales son enviadas con un cliente web, luego creamos una variable de tipo Worklog llamada wl a la que pasamos por medio de el constructor la variable mysql para podernos conectar a la base de datos. Dentro de la variable wl accedemos a la función find_location pasandole como parámetro country y city, esta función lo que hace es que consulta a la tabla location el country y city enviado, y retorna el estado del registro este resultado se almacena en la variable js, en caso de que el registro no exista se crea un objeto con el mensaje **Registro no encontrado** en caso positivo crea un objeto agregando country, city y active con sus respectivos valores, este objeto lo convertimos en json con la función jsonify y lo retornamos al cliente web, en caso de que se genere un error se ejecuta except enviando el mensaje **Ha ocurrido un error, Verifique el URL**.
+Se modificó la función **get_active**, acá lo que hacemos es obtener las variables country y city con request.args.get() las cuales son enviadas con un cliente web, luego creamos una variable de tipo **Worklog** llamada wl a la que pasamos por medio de el constructor la variable mysql para podernos conectar a la base de datos. Dentro de la variable wl accedemos a la función **find_location** pasandole como parámetro country y city, esta función lo que hace es que consulta a la tabla location el country y city enviado, y retorna el estado del registro este resultado se almacena en la variable js, en caso de que el registro no exista se crea un objeto con el mensaje **Registro no encontrado** en caso positivo crea un objeto agregando country, city y active con sus respectivos valores, este objeto lo convertimos en json con la función jsonify y lo retornamos al cliente web, en caso de que se genere un error se ejecuta except enviando el mensaje **Ha ocurrido un error, Verifique el URL**.
+
+    @app.route('/active', methods=['GET'])
+    def get_active():
+        try:
+            country = request.args.get('country')
+            city = request.args.get('city')
+    
+            wl = Worklog(mysql, app.logger)
+            js = wl.find_location(country, city)
+        
+            if js is None:
+                data = {"mensaje": "Registro no encontrado"}
+            else:
+                data = {
+                            "country": js[0],
+                            "city": js[1],
+                            "active": bool(js[2])
+                       }
+    
+            return jsonify(data)
+        except:
+            return jsonify({"mensaje": "Ha ocurrido un error, Verifique el URL."})
+
+Se creó la ruta active con el método post y la función **post_active**, esta función espera los datos en formato json, para leer estos datos utilizamos request.get_json() y los almacenamos en la variable payload, creamos una variable de tipo worklog llamanda wl y usamos la función **find_location** para verificar si existe el country y city enviado, en caso positivo se arma una variable de tipo objeto con el mensaje **El registro ya existe en la base de datos** y la retornamos al cliente, en caso contrario usamos la función **save_location** para almacenar el registro en la base de datos pasandole como parámetros payload, si todo se ejecuta sin error se arma una variable de tipo objeto agregándole los valores guardado y agregando el mensaje **Registro guardado satisfactoriamente**, si se genera un error se ejecuta except y manda el mensaje **Ha ocurrido un error, Verifique el URL**. 
+
+    @app.route('/active', methods=['POST'])
+    def post_active():
+        try:
+            payload = request.get_json()
+            wl = Worklog(mysql, app.logger)
+            js = wl.find_location(payload['country'], payload['city'])
+        
+	        if js is None:
+	            wl.save_location(**payload)
+	            data = {
+	                        "mensaje": "Registro guardado satisfactoriamente", 
+	                        "country": payload['country'],
+	                        "city": payload['city']
+	                   }
+	        else:
+	            data = {"mensaje": "El registro ya existe en la base de datos"}
+
+	        return jsonify(data)
+	    except:
+	        return jsonify({"mensaje": "Ha ocurrido un error, Verifique el URL."})
+Se creó la ruta active con el método put y la función **put_active**, esta función espera los datos en formato json, para leer estos datos utilizamos request.get_json() y los almacenamos en la variable payload, leemos del encabezado de la petición el token enviado por el cliente con request.get("authorization"), se realizan ciertas verificaciones por ejemplo si el token no se envia se crea una variable de tipo objeto con el mensaje No ha enviado token, si el token no es igual al esperado se envía el mensaje **El token enviado no esta autorizado** y en caso de que sea igual se crea la variable wl de tipo Worklog, se accede a la función **state_location** pasando como  parámetro la variable payload.
+La función **state_location** lo que hace es que modifica el valor del campo active en la tabla location con el valor que se envía en el json, la función retorna 1 en caso de que se haya actualizado el registro y 0 en caso de que el registro no haya tenido cambio, por lo tanto se verifica y se notifica si se actualizó el registro o no.
 ## Analizando el contenido de Dockerfile.
 
  - FROM python: crea la imagen del micro servicio basada en una imagen de python.
