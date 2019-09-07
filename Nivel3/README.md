@@ -180,3 +180,123 @@ En la llamada [POST] /active no se invalida la cache dado que el registro que se
         app.run(debug=True)
 ## requirements.txt
 Dentro de este fichero se agrego el nombre de la libreria redis.
+
+    Click==7.0
+    Flask==1.1.1
+    itsdangerous==1.1.0
+    Jinja2==2.10.1
+    MarkupSafe==1.1.1
+    Werkzeug==0.15.5
+    worklog
+    flask_mysqldb
+    redis
+## docker-compose.yml
+En este fichero se agregaron las variables REDIS_LOCATION y REDIS_PORT en la sección environment de nica-ventas para indicarle el host y el puerto de redis que se utilizará.
+
+    nica-ventas:
+    	image: juancarlosb64/nica-ventas
+    	build:
+    		context: ./disponibilidad
+    		dockerfile: Dockerfile
+    	ports:
+    		- "8000:5000"
+    	volumes:
+    		- ./disponibilidad/app:/app
+    	environment: 
+    		- FLASK_DEBUG=1
+    		- DATABASE_PASSWORD=nicaventaspass
+    		- DATABASE_NAME=nicaventasdb
+    		- DATABASE_USER=nicaventasuser
+    		- DATABASE_HOST=nicaventas-db
+    		- REDIS_LOCATION=redis
+    		- REDIS_PORT=6379
+Tambien se agrega el contenedor redis el cual se creará con la imagen de redis exponiendo el puerto 6379.
+
+    redis:
+    	image: redis
+    	expose:
+    		- 6379
+## Contenido de docker-compose.yml
+
+    version: '3'
+    services:
+            nica-ventas:
+	            image: juancarlosb64/nica-ventas
+                build:
+                       context: ./disponibilidad
+                       dockerfile: Dockerfile
+                ports:
+                       - "8000:5000"
+                volumes:
+                       - ./disponibilidad/app:/app
+	            environment: 
+                       - FLASK_DEBUG=1
+                       - DATABASE_PASSWORD=nicaventaspass
+                       - DATABASE_NAME=nicaventasdb
+                       - DATABASE_USER=nicaventasuser
+                       - DATABASE_HOST=nicaventas-db
+                       - REDIS_LOCATION=redis
+                       - REDIS_PORT=6379
+	            command: flask run --host=0.0.0.0
+	             
+	        nicaventas-db:
+               image: mysql:5 
+               environment:
+                       - MYSQL_ROOT_PASSWORD=123qwe
+                       - MYSQL_DATABASE=nicaventasdb
+                       - MYSQL_USER=nicaventasuser
+                       - MYSQL_PASSWORD=nicaventaspass
+               expose:
+                       - 3306
+               volumes:
+                       - ./disponibilidad/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+        redis:
+               image: redis
+               expose:
+                       - 6379
+Una vez finalizado estos cambios procedemos a ejecutar el docker-compose con el siguiente comando:
+
+    docker-compose up
+Con esto se carga el contenedor nica-ventas, mysql y redis.
+
+Para consumir la llamada [GET] /active desde un cliente web como curl se utiliza el siguiente comando:
+
+    curl -i 'localhost:8000/active?city=leon&country=ni'
+Si se ejecuta 2 veces el comando curl la primera ejecución retornará:
+
+    {
+    	"country": "ni",
+    	"city": leon,
+    	"active": false,
+    	"cache": "miss"
+    }
+y la segunda ejecución retornará:
+
+    {
+    	"country": "ni",
+    	"city": leon,
+    	"active": false,
+    	"cache": "hit"
+    }
+Para guardar una nueva ciudad se utiliza el siguiente comando:
+
+    curl -i -d '{"country":"ni", "city":"Leon"}' -H "Content-Type: application/json" -X POST localhost:8000/active
+Para cambiar el estado de una ciudad se utiliza el siguiente comando:
+
+    curl -i -X PUT -H "Authorization: Bearer 2234hj234h2kkjjh42kjj2b20asd6918" -H "Content-Type: application/json" -d '{"country":"ni", "city":"Leon", "active":true}' localhost:8000/active
+En este caso si la ciudad leon esta cargada en cache al cambiar el esto se borra la cache y si se consulta el campo cache igual a hit cambia a miss.
+
+Para crear la imagen del micro servicio se utiliza el siguiente comando:
+
+    docker build -t juancarlosb64/nica-ventas:v3.0 .
+Para subir la imagen al repositorio dockerhub se utiliza el siguiente comando:
+
+    docker push juancarlosb64/nica-ventas:v3.0
+Si se desea descargar la imagen del repositorio de dockerhub se utiliza el siguiente comando:
+
+    docker pull juancarlosb64/nica-ventas:v3.0
+Url de imagen en dockerhub
+
+    https://hub.docker.com/r/juancarlosb64/nica-ventas
+Y con esto completamos el nivel 3 del ejercicio.
+
