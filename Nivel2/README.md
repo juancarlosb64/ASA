@@ -10,7 +10,7 @@ En la solución de este nivel se modificaron los archivos app.py y requirements,
     └── nica-ventas
 	    ├── disponibilidad
 	    │   ├── app
-	    ││   ├── app.py
+	    │   │   ├── app.py
 		│   ├── requirements.txt
 		│   └── worklog.py
 		├── Dockerfile
