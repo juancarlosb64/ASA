@@ -12,8 +12,8 @@ En la solución de este nivel se modificaron los archivos app.py y requirements,
 		├── app
 		│   ├── app.py
 		│   ├── requirements.txt
-		    │   └── worklog.py
-		└── Dockerfile
+	    │   └── worklog.py
+		├── Dockerfile
 		└── schema.sql
 	└── docker-compose.yml
 
