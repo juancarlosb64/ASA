@@ -79,53 +79,142 @@ Se creó la ruta active con el método post y la función **post_active**, esta 
 	        return jsonify({"mensaje": "Ha ocurrido un error, Verifique el URL."})
 Se creó la ruta active con el método put y la función **put_active**, esta función espera los datos en formato json, para leer estos datos utilizamos request.get_json() y los almacenamos en la variable payload, leemos del encabezado de la petición el token enviado por el cliente con request.get("authorization"), se realizan ciertas verificaciones por ejemplo si el token no se envia se crea una variable de tipo objeto con el mensaje No ha enviado token, si el token no es igual al esperado se envía el mensaje **El token enviado no esta autorizado** y en caso de que sea igual se crea la variable wl de tipo Worklog, se accede a la función **state_location** pasando como  parámetro la variable payload.
 La función **state_location** lo que hace es que modifica el valor del campo active en la tabla location con el valor que se envía en el json, la función retorna 1 en caso de que se haya actualizado el registro y 0 en caso de que el registro no haya tenido cambio, por lo tanto se verifica y se notifica si se actualizó el registro o no.
-## Analizando el contenido de Dockerfile.
 
- - FROM python: crea la imagen del micro servicio basada en una imagen de python.
- - COPY /app /app: copia los archivos que tenemos en el directorio app al directorio app del docker.
- - RUN pip install -r /app/requirements.txt: instala en el docker todos los paquetes especificados dentro del archivo requirements.txt
- - WORKDIR app: especifica el directorio de trabajo del docker.
- - CMD ["python", "app.py"]: especifica el primer comando que se ejecutará cuando el docker este en ejecución, en este caso será app.py el cual es un programa python.
- - EXPOSE 5000: especifica el puerto de escucha del docker.
-## Directorio app.
-Dentro del directorio app se crearon dos ficheros: 
- - app.py
-Que es un pequeño programa escrito en lenguaje python y es el que se encarga de atender las solicitudes que hagamos con un cliente web, para crear este programa se realizó lo siguiente:
+    @app.route('/active', methods=['PUT'])
+    def put_active():
+        try:
+            payload = request.get_json()
+            auth = request.headers.get("authorization", None)
 
-	1. Especificar los paquetes que se utilizarán:
-	flask: es un miniframework que permite crear aplicaciones web.
-	jsonify: se utiliza para codificar los objetos json.
-	request: se utiliza para obtener los parámetros enviados a los diferentes servicios.
-	2. Crear una variable de tipo Flask, ya que es la que nos permite correr un servidor web, atendiendo peticiones.
-	3. Crear una ruta llamada active usando el método GET, esta ruta es la que llamaremos con un cliente web.
-	4. Definir una función llamada get_active, la cual se ejecutará cuando se consuma la ruta [GET] /active.
-	5. Crear una variable de tipo objeto con el nombre data en la cual guardamos los datos que retornaremos.
-	6. Crear un json a partir de la variable data.
+	        if not auth:
+	            data = {"mensaje": "No ha enviado token"}
+	        elif auth != "Bearer 2234hj234h2kkjjh42kjj2b20asd6918":
+	            data = {"mensaje": "El token enviado no esta autorizado"}
+	        else:
+	            wl = Worklog(mysql, app.logger)
+	            res = wl.state_location(**payload)
 
-Dado que el ejercicio nos pide que retornemos un dummy fijo retornamos los mismos datos que enviamos a [GET] /active.
+	            if res == 0:
+	                data = {
+	                            "mensaje": "No se actualizo ningun registro",
+	                            "token": auth,
+	                            "country": payload['country'],
+	                            "city": payload['city'],
+	                            "active": payload['active']
+	                       }
+	            else:
+	                data = {
+	                            "mensaje": "Registro actualizado satisfactoriamente",
+	                            "token": auth,
+	                            "country": payload['country'],
+	                            "city": payload['city'],
+	                            "active": payload['active']
+	                       }
+
+	        return jsonify(data)
+	    except:
+	        return jsonify({"mensaje": "Ha ocurrido un error, Verifique el URL."})
 ## Contenido de app.py
 
     #!flask/bin/python
-    from flask import Flask, jsonify, request
+    from flask import Flask, jsonify, request, escape
     import os
+    from flask_mysqldb import MySQL
+    from worklog import Worklog
     
     app = Flask(__name__)
+
+    app.config['MYSQL_HOST'] = os.environ['DATABASE_HOST']
+    app.config['MYSQL_USER'] = os.environ['DATABASE_USER']
+    app.config['MYSQL_PASSWORD'] = os.environ['DATABASE_PASSWORD']
+    app.config['MYSQL_DB'] = os.environ['DATABASE_NAME']
     
+    mysql = MySQL(app)
+
     @app.route('/active', methods=['GET'])
     def get_active():
-    	    data = {
-					    "active": True,
-		                "country": request.args.get('country'),
-		                "city": request.args.get('city')
-			       }
-	return jsonify(data)
-	
-	if __name__ == '__main__':
-	    app.run(debug=True, host='0.0.0.0')
-## requirements.txt
-Es un archivo que texto plano que contiene un listado de nombres de paquetes que se necesitan instalar dentro del docker para que este funcione correctamente.
+        try:
+            country = request.args.get('country')
+            city = request.args.get('city')
 
-## Contenido de requirements.txt
+	        wl = Worklog(mysql, app.logger)
+	        js = wl.find_location(country, city)
+    
+	        if js is None:
+	            data = {"mensaje": "Registro no encontrado"}
+	        else:
+	            data = {
+	                        "country": js[0],
+	                        "city": js[1],
+	                        "active": bool(js[2])
+	                   }
+
+	        return jsonify(data)
+	    except:
+	        return jsonify({"mensaje": "Ha ocurrido un error, Verifique el URL."})
+
+    @app.route('/active', methods=['POST'])
+    def post_active():
+        try:
+            payload = request.get_json()
+            wl = Worklog(mysql, app.logger)
+            js = wl.find_location(payload['country'], payload['city'])
+
+	        if js is None:
+	            wl.save_location(**payload)
+	            data = {
+	                        "mensaje": "Registro guardado satisfactoriamente", 
+	                        "country": payload['country'],
+	                        "city": payload['city']
+	                   }
+	        else:
+	            data = {"mensaje": "El registro ya existe en la base de datos"}
+
+	        return jsonify(data)
+	    except:
+	        return jsonify({"mensaje": "Ha ocurrido un error, Verifique el URL."})
+
+    @app.route('/active', methods=['PUT'])
+    def put_active():
+        try:
+            payload = request.get_json()
+            auth = request.headers.get("authorization", None)
+
+	        if not auth:
+	            data = {"mensaje": "No ha enviado token"}
+	        elif auth != "Bearer 2234hj234h2kkjjh42kjj2b20asd6918":
+	            data = {"mensaje": "El token enviado no esta autorizado"}
+	        else:
+	            wl = Worklog(mysql, app.logger)
+	            res = wl.state_location(**payload)
+
+	            if res == 0:
+	                data = {
+	                            "mensaje": "No se actualizo ningun registro",
+	                            "token": auth,
+	                            "country": payload['country'],
+	                            "city": payload['city'],
+	                            "active": payload['active']
+	                       }
+	            else:
+	                data = {
+	                            "mensaje": "Registro actualizado satisfactoriamente",
+	                            "token": auth,
+	                            "country": payload['country'],
+	                            "city": payload['city'],
+	                            "active": payload['active']
+	                       }
+
+	        return jsonify(data)
+	    except:
+	        return jsonify({"mensaje": "Ha ocurrido un error, Verifique el URL."})
+
+    if __name__ == '__main__':
+        app.run(debug=True)
+
+ 
+## requirements.txt
+Dentro de este fichero se agregó el nombre de la libreria flask_mysqldb para que se instale en el contenedor y el micro servicio funcione sin problemas.
 
     Click==7.0
     Flask==1.1.1
@@ -133,29 +222,184 @@ Es un archivo que texto plano que contiene un listado de nombres de paquetes que
     Jinja2==2.10.1
     MarkupSafe==1.1.1
     Werkzeug==0.15.5
+    flask_mysqldb
 
-Con esto tendríamos finalizado el micro servicio, a continuación se procede con la creación de la imagen, para esto se utilizó el siguientes comando:
+## worklog.py
+Es una clase de python la cual funciona como un repositorio, dentro de este documento están las funciones que utilizamos en el archivo app.py, estas funciones tienen las consultas sql las cuales se arman con los parámetros enviados desde app.py y se ejecutan en el servidor de base de datos, la conexión a la base de datos se realiza en la función __init__.
 
-    docker build -t juancarlosb64/nica-ventas:v1.0 .
+    class Worklog:
 
-Debido a que se esta trabajando en el nivel 1 creamos la imagen con el tag v1.0, con la imagen creada se procede a subirla al repositorio en dockerhub con el siguiente comando:
+    def __init__(self, dbcon, logger):
+        self._dbcon=dbcon
+        self._logger=logger
 
-    docker push juancarlosb64/nica-ventas:v1.0
+    def save_location(self, **kwargs):
+        sql = """
+        insert into location 
+        (country,city,active) 
+        values ('{}','{}',false)
+        """.format(  
+            kwargs['country'],
+            kwargs['city'])
+        cur = self._dbcon.connection.cursor()
+        cur.execute(sql)
+        self._dbcon.connection.commit()
+        cur.close()
+        self._logger.info(sql)
 
-Si se desea descargar la imagen del repositorio de dockerhub se utiliza el siguiente comando:
+    def find_location(self, vCountry, vCity):
+        sql = """
+        select country, city, active from location where country="{}" and city="{}";
+        """.format(
+                vCountry,
+                vCity)
+        cur = self._dbcon.connection.cursor()
+        cur.execute(sql)
+        rv = cur.fetchone()
+        cur.close()
+        self._logger.info(sql)
+        self._logger.info(rv)
+        return rv
 
-    docker pull juancarlosb64/nica-ventas:v1.0
+    def state_location(self, **kwargs):
+        sql = """
+        update location 
+        set active = "{}"
+        where country="{}" and city="{}";
+        """.format(
+                int(kwargs['active']),
+                kwargs['country'],
+                kwargs['city'])
+        cur = self._dbcon.connection.cursor()
+        res = cur.execute(sql)
+        self._dbcon.connection.commit()
+        cur.close()
+        self._logger.info(sql)
+        return res 
+## schema.sql
+Es un script de sql con el que se crean las tablas y se insertan registros de prueba en la base de datos MySQL.
 
-Para ejecutar la imagen de nica-ventas utilizando el puerto 8000 para el cliente web enlazándolo con el 5000 que es el puerto que escucha el docker se utiliza el siguiente comando:
- 
-    docker run -p 8000:5000 juancarlosb64/nica-ventas:v1.0
+    CREATE TABLE IF NOT EXISTS location (
+    	country varchar(2) NOT NULL,
+    	city varchar(100) NOT NULL,
+    	active bool NOT NULL,
+    	PRIMARY KEY (country, city)
+    ) ENGINE=innodb;
+
+    INSERT INTO location (country, city, active) VALUES ('PR', 'Guayama', false);
+    INSERT INTO location (country, city, active) values ('AF', 'Kabul', false);
+    INSERT INTO location (country, city, active) values ('ZA', 'Pretoria', false);
+    INSERT INTO location (country, city, active) values ('AL', 'Tirana', false);
+    INSERT INTO location (country, city, active) values ('DE', 'Berlin', false);
+    INSERT INTO location (country, city, active) values ('AD', 'Andorra', false);
+    INSERT INTO location (country, city, active) values ('AO', 'Luanda', false);
+    INSERT INTO location (country, city, active) VALUES ('NI', 'Leon', false);
+## docker-compose.yml
+Es un fichero en el que especificamos los diferentes contenedores y servicios que utilizaremos. 
+
+### Contenedor nica-ventas
+En la configuración del contenedor tenemos:
+**image:** se especifica la imagen que se utilizará cuando se ejecute el docker.
+**build:** se utiliza para indicar donde está el fichero Dockerfile.
+**ports:** se mapea el puerto localhost con el puerto del escucha del docker.
+**volumes:** se mapea el directorio actual directamente con el directorio app de la aplicación.
+**environment:** en esta sección se declaran las variables de entorno del contenedor. 
+**command:** se escribe el comando que permite ejecutar la aplicación en modo servidor.
+
+    image: juancarlosb64/nica-ventas
+    build:
+    	context: ./disponibilidad
+    	dockerfile: Dockerfile
+    ports:
+    	- "8000:5000"
+    volumes:
+    	- ./disponibilidad/app:/app
+
+    environment: 
+    	- FLASK_DEBUG=1
+    	- DATABASE_PASSWORD=nicaventaspass
+    	- DATABASE_NAME=nicaventasdb
+    	- DATABASE_USER=nicaventasuser
+    	- DATABASE_HOST=nicaventas-db
+    command: flask run --host=0.0.0.0
+
+### Contenedor nicaventas-db 
+En la configuración del contenedor tenemos:
+**image:** se especifica la imagen mysql que se utilizará. 
+**environment:** se declaran las variables de entorno del contenedor.  
+**expose:** se especifica el puerto de escucha del docker. 
+**volumes:** se especifica donde se encuentra el script sql para copiarlo en el docker y que este cree la base de datos con sus tablas y registros de prueba.
+
+    image: mysql:5
+    environment:
+		- MYSQL_ROOT_PASSWORD=123qwe
+		- MYSQL_DATABASE=nicaventasdb
+		- MYSQL_USER=nicaventasuser
+		- MYSQL_PASSWORD=nicaventaspass
+	expose:
+		- 3306
+	volumes:
+		- ./disponibilidad/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+
+### Contenido de docker-compose.yml
+
+    version: '3'
+    services:
+            nica-ventas:
+                    image: juancarlosb64/nica-ventas
+                    build:
+                           context: ./disponibilidad
+                           dockerfile: Dockerfile
+                    ports:
+                            - "8000:5000"
+	                volumes:
+	                        - ./disponibilidad/app:/app
+	                environment: 
+	                        - FLASK_DEBUG=1
+	                        - DATABASE_PASSWORD=nicaventaspass
+	                        - DATABASE_NAME=nicaventasdb
+	                        - DATABASE_USER=nicaventasuser
+	                        - DATABASE_HOST=nicaventas-db
+	                command: flask run --host=0.0.0.0
+
+	        nicaventas-db:
+	               image: mysql:5 
+	               environment:
+	                       - MYSQL_ROOT_PASSWORD=123qwe
+	                       - MYSQL_DATABASE=nicaventasdb
+	                       - MYSQL_USER=nicaventasuser
+	                       - MYSQL_PASSWORD=nicaventaspass
+	               expose:
+	                      - 3306
+	               volumes:
+	                      - ./disponibilidad/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+
+Una vez finalizado el micro servicio procedemos a ejecutarlo con el siguiente comando:
+
+    docker-compose up
+
+Con esto se carga el contenedor nica-ventas y de mysql.
 
 Para consumir la llamada [GET] /active desde un cliente web como curl se utiliza el siguiente comando:
 
     curl -i 'localhost:8000/active?city=leon&country=ni'
+Para guardar una nueva ciudad se utiliza el siguiente comando:
 
+    curl -i -d '{"country":"ni", "city":"Leon"}' -H "Content-Type: application/json" -X POST localhost:8000/active
+Para cambiar el estado de una ciudad se utiliza el siguiente comando:
+
+    curl -i -X PUT -H "Authorization: Bearer 2234hj234h2kkjjh42kjj2b20asd6918" -H "Content-Type: application/json" -d '{"country":"ni", "city":"Leon", "active":true}' localhost:8000/active
+Para crear la imagen del microservicio se utiliza el siguiente comando:
+
+    docker build -t juancarlosb64/nica-ventas:v2.0 .
+Para subir la imagen al repositorio dockerhub se utiliza el siguiente comando:
+
+    docker push juancarlosb64/nica-ventas:v2.0
+Si se desea descargar la imagen del repositorio de dockerhub se utiliza el siguiente comando:
+
+    docker pull juancarlosb64/nica-ventas:v2.0
 Url de imagen en dockerhub
 
     https://hub.docker.com/r/juancarlosb64/nica-ventas
+Y con esto completamos el nivel 2 del ejercicio.
 
-Y con esto completamos el nivel 1 del ejercicio.
