@@ -306,7 +306,7 @@ En la configuración del contenedor tenemos:
  - **volumes:** se mapea el directorio actual directamente con el directorio app de la aplicación.
  - **environment:** en esta sección se declaran las variables de entorno del contenedor. 
  - **command:** se escribe el comando que permite ejecutar la aplicación en modo servidor.
-
+###
     image: juancarlosb64/nica-ventas
     build:
     	context: ./disponibilidad
@@ -326,11 +326,11 @@ En la configuración del contenedor tenemos:
 
 ### Contenedor nicaventas-db 
 En la configuración del contenedor tenemos:
-**image:** se especifica la imagen mysql que se utilizará. 
-**environment:** se declaran las variables de entorno del contenedor. 
-**expose:** se especifica el puerto de escucha del docker. 
-**volumes:** se especifica donde se encuentra el script sql para copiarlo en el docker y que este cree la base de datos con sus tablas y registros de prueba.
-
+- **image:** se especifica la imagen mysql que se utilizará. 
+- **environment:** se declaran las variables de entorno del contenedor. 
+- **expose:** se especifica el puerto de escucha del docker. 
+- **volumes:** se especifica donde se encuentra el script sql para copiarlo en el docker y que este cree la base de datos con sus tablas y registros de prueba.
+### 
     image: mysql:5
     environment:
 		- MYSQL_ROOT_PASSWORD=123qwe
