@@ -8,7 +8,7 @@ Objetivos:
 En la solución de este nivel se modificaron los archivos app.py y requirements, tambien se crearon nuevos archivos como worklog.py, schema y docker-compose.yml, quedando el arbol de directorio de la siguiente manera:
 
     └── nica-ventas
-	    └── disponibilidad
+	    ├── disponibilidad
 		│   ├── app
 		│   ├── app.py
 		│   ├── requirements.txt
@@ -16,18 +16,22 @@ En la solución de este nivel se modificaron los archivos app.py y requirements,
 		├── Dockerfile
 		└── schema.sql
 		│	└── docker-compose.yml
+## app.py
+Este programa fue modificado ya que en este nivel se interactua con base de datos almacenando y consultando registros, para este ejemplo se esta utilizando MySQL como gestor de base de datos. Primeramente se agregó la libreria flask_mysqldb y una clase hecha en python llamada worklog que se encuentra en el archivo worklog.py, esta clase se conecta al servidor MySQL.
 
+    from flask_mysqldb import MySQL
+    from worklog import Worklog
+En la configuración de la variable flask se agregaron las credenciales para conectarse al servidor de base de datos y se creo una variable MySQL, la cual utilizaremos para conectarnos al servidor.
 
-El directorio nica-ventas es el directorio principal dentro del cual están almacenados los microservicios, dentro de nica-ventas creamos el directorio disponibilidad porque se le da solución al **servicio de consulta de disponibilidad de ventas** y dentro de disponibilidad creamos el directorio app y el fichero Dockerfile.
-## Dockerfile
-Es un archivo de texto plano que contiene las instrucciones necesarias para automatizar la creación de una imagen que será utilizada posteriormente para la ejecución de instancias (docker), el contenido del archivo Dockerfile es el siguiente:
-
-    FROM python
-    COPY /app /app
-    RUN pip install -r /app/requirements.txt
-    WORKDIR app
-    CMD ["python", "app.py"]
-    EXPOSE 5000
+    app = Flask(__name__)
+    
+    app.config['MYSQL_HOST'] = os.environ['DATABASE_HOST']
+    app.config['MYSQL_USER'] = os.environ['DATABASE_USER']
+    app.config['MYSQL_PASSWORD'] = os.environ['DATABASE_PASSWORD']
+    app.config['MYSQL_DB'] = os.environ['DATABASE_NAME']
+    
+    mysql = MySQL(app)
+Se modificó la función get_active, acá lo que hacemos es obtener las variables country y city con request.args.get() las cuales son enviadas con un cliente web, luego creamos una variable de tipo Worklog llamada wl a la que pasamos por medio de el constructor la variable mysql para podernos conectar a la base de datos. Dentro de la variable wl accedemos a la función find_location pasandole como parámetro country y city, esta función lo que hace es que consulta a la tabla location el country y city enviado, y retorna el estado del registro este resultado se almacena en la variable js, en caso de que el registro no exista se crea un objeto con el mensaje **Registro no encontrado** en caso positivo crea un objeto agregando country, city y active con sus respectivos valores, este objeto lo convertimos en json con la función jsonify y lo retornamos al cliente web, en caso de que se genere un error se ejecuta except enviando el mensaje **Ha ocurrido un error, Verifique el URL**.
 ## Analizando el contenido de Dockerfile.
 
  - FROM python: crea la imagen del micro servicio basada en una imagen de python.
