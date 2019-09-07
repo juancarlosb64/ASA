@@ -11,7 +11,7 @@ En la solución de este nivel se modificaron los archivos app.py y requirements,
 	    └── disponibilidad
 		├── app
 		│   ├── app.py
-		│   └── requirements.txt
+		│   ├── requirements.txt
 	    │   └── worklog.py
 		└── Dockerfile
 		└── schema.sql
