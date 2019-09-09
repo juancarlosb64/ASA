@@ -6,7 +6,7 @@ Objetivos:
 En la solución de este nivel se crearon nuevos archivos y directorios ya que al crearse un nuevo micro servicio se tuvo que realizar otro archivo app.py, worklog.py, requirements, etc. quedando el árbol de directorio de la siguiente manera:
 
     └── nica-ventas
-    ├── condiciones
+        ├── condiciones
 	    │   ├── app
 	    │   │   ├── app.py
 	    │   │   ├── requirements.txt
